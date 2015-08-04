@@ -368,6 +368,13 @@ void _fplay_note(int note, int duration) {
   _fplay_hz(resfreq, duration);
 }
 
+// Library Functions ends here.
+// Program starts just here.
+//
+// This program will play a sequence of notes from
+// lowest to highest.
+
+
 void setup() {
   _finitialize();
 }
