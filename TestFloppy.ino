@@ -40,7 +40,8 @@
 
 
     If you want 2 or more floppies you'll have a little bit more work.
-    (Make sure every "selectpin" of the floppies are on a different pin of the arduino)
+    - Make sure every "selectpin" of the floppies are on a different pin of the arduino.
+    - Make sure the "steppin" and "dirpin" are shared between all the floppies in the circuit.
 
     Example:
 
