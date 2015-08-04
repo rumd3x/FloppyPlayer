@@ -9,8 +9,11 @@
 
    This library was intensively tested and its extremely reliable.
    ----
+   How to setup:
+   
    "dirpin" corresponds to pin 18 on the Floppy Drive.
-   "steppin" corresponds to pin 12 AND 20 on the Floppy Drive.
+   "steppin" corresponds to pin 20 on the Floppy Drive.
+   "selectpin" corresponds to pin 12 on the Floppy Drive.
 
    When the "dirpin" is set to LOW(0v/Gnd) it will go forward, and backward when set to HIGH(5v).
    When the "steppin" is on falling edge (going from HIGH(5v) to LOW(0v/Gnd)) it steps on 
@@ -18,13 +21,51 @@
 
    Going Forward -> Moving towards the center.
    Going Backward -> Moving away from the center.
+   
+
+   If you don't want to have more than one drive you're almost good to go, just jump
+   the "selectpin" to the "steppin" and do the following to use the functions:
+
+    #define randomfloppyname randompinnumber
+
+    Type the code above on the header of your code and then use the "randomfloppyname" on the
+    functions.
+
+    Example:
+
+    #define floppy1 5
+    ...
+    _finitialize(floppy1);
+    _step_once(floppy1);
+
+
+    If you want 2 or more floppies you'll have a little bit more work.
+    (Make sure every "selectpin" of the floppies are on a different pin of the arduino)
+
+    Example:
+
+    #define guitar 6
+    #define bass 5
+    #define piano 12
+    ...
+    then initialize them
+    ...
+    _finitialize(guitar);
+    _finitialize(bass);
+    _finitialize(piano);
+    ...
+    then you can play
+    ...
+    _fplay_note(guitar, 25, 1000);
+    _fplay_note(bass, 51, 150);
+    _fplay_note(piano, 38, 245);    
    ----
    ----
    _finitialize:
 
    This function is used to setup the Arduino and the Floppy Drive.
-   It sets the pins set as "dirpin" and "steppin" as outputs, and makes the
-   floppy step motor bring the reader read all the way back (to pos == 0) and
+   It sets the pins set as "dirpin", "steppin" and "drivepin" as outputs, and makes the
+   desired floppy step motor bring the reader head all the way back (to pos == 0) and
    then be able to track it, and control it, so when playing stuff it doesn't
    get jammed around and screwing then sound.
 
@@ -32,8 +73,8 @@
 
    Example:
 
-   _finitialize();
-   Sets up the floppy drive, and the arduino.   
+   _finitialize(5);
+   Sets up the floppy drive at pin 5, and the arduino.   
    ----
    ----
    _fplay_hz:
@@ -44,10 +85,10 @@
 
    Example:
 
-   _fplay_hz(50, 1000);
-   This will play a 50Hz on the floppy drive for 1 second.
+   _fplay_hz(guitar, 50, 1000);
+   This will play a 50Hz on the floppy drive named guitar for 1 second.
 
-   _fplay_hz(650, 500);
+   _fplay_hz(guitar, 650, 500);
    Playing a note that is out of range (650Hz) will cause a pause.
    In this example it will pause for 500ms.
    ----
@@ -61,11 +102,11 @@
 
    Example
 
-   _fplay_note(25, 1000);
-   This will play a C#2 for a second.
+   _fplay_note(bass, 25, 1000);
+   This will play a C#2 for a second on the floppy named bass.
 
-   _fplay_note(5, 250);
-   This will play no sound for 1/4 seconds.
+   _fplay_note(13, 5, 250);
+   This will mute the drive at pin 13 for 1/4 seconds.
 
    Note Table:
    C0 - 0 - Lowest
@@ -143,8 +184,8 @@
 
    Example:
 
-   _step_once();
-   This will make the motor move 1 step in any direction.
+   _step_once(15);
+   This will make the motor of the floppy drive at pin 15 move 1 step in any direction.
    ----
    ----
    _step_forward:
@@ -159,8 +200,8 @@
 
    Example:
 
-   _step_forward();
-   This will make the head go forward if it is able to, if not will go back instead.
+   _step_forward(bass);
+   This will make the head of the floppy named bass go forward if it is able to, if not will go back instead.
    ----
    ----
    _step_back:
@@ -175,114 +216,130 @@
 
    Example:
 
-   _step_back();
-   This will make the head go back if it is able to, if not will go forward instead.
+   _step_back(piano);
+   This will make the head of the floppy named piano go back if it is able to, if not will go forward instead.
 
 */
 
 #define steppin 12
 #define dirpin 10
+#define piano 11
 
 
 #define front LOW
 #define back HIGH
 
-int pos, dir = 0;
+int pos[53], dir[53];
 
-void _finitialize() {
+void _finitialize(int drivepin) {
   pinMode(steppin, OUTPUT);
   pinMode(dirpin, OUTPUT);
+  pinMode(drivepin, OUTPUT);
   digitalWrite(steppin, HIGH);
   digitalWrite(dirpin, back);
   delay(15);
   for (int i = 0; i <= 81; i++) {
+    digitalWrite(drivepin, LOW);
     digitalWrite(steppin, LOW);
     delay(2);
+    digitalWrite(drivepin, HIGH);
     digitalWrite(steppin, HIGH);
     delay(2);
   }
-  pos = 0;
-  dir = 1;
+  pos[drivepin] = 0;
+  dir[drivepin] = 1;
   delay(250);
 }
 
-void _fstep_once() {
-  if (dir == 0) {
+void _fstep_once(int drivepin) {
+  if (dir[drivepin] == 0) {
     digitalWrite(dirpin, back);
     delayMicroseconds(500);
+    digitalWrite(drivepin, LOW);
     digitalWrite(steppin, LOW);
     delayMicroseconds(750);
     digitalWrite(steppin, HIGH);
+    digitalWrite(drivepin, HIGH);
     delayMicroseconds(750);
-    pos--;
+    pos[drivepin]--;
   }
   else {
     digitalWrite(dirpin, front);
     delayMicroseconds(500);
+    digitalWrite(drivepin, LOW);
     digitalWrite(steppin, LOW);
     delayMicroseconds(750);
     digitalWrite(steppin, HIGH);
+    digitalWrite(drivepin, HIGH);
     delayMicroseconds(750);
-    pos++;
+    pos[drivepin]++;
   }
-  if ((pos == 80) or (pos == 0)) {
-    dir = !dir;
+  if ((pos[drivepin] == 80) or (pos[drivepin] == 0)) {
+    dir[drivepin] = !dir[drivepin];
   }
 }
 
-int _fstep_forward() {
-  if (pos >= 80) {
+int _fstep_forward(int drivepin) {
+  if (pos[drivepin] >= 80) {
     digitalWrite(dirpin, back);
     delayMicroseconds(500);
+    digitalWrite(drivepin, LOW);
     digitalWrite(steppin, LOW);
     delayMicroseconds(750);
     digitalWrite(steppin, HIGH);
+    digitalWrite(drivepin, HIGH);
     delayMicroseconds(750);
-    pos--;
+    pos[drivepin]--;
     return 0;
   }
   else {
     digitalWrite(dirpin, front);
     delayMicroseconds(500);
+    digitalWrite(drivepin, LOW);
     digitalWrite(steppin, LOW);
     delayMicroseconds(750);
     digitalWrite(steppin, HIGH);
+    digitalWrite(drivepin, HIGH);
     delayMicroseconds(750);
-    pos++;
+    pos[drivepin]++;
     return 1;
   }
-  if ((pos == 80) or (pos == 0)) {
-    dir = !dir;
+  if ((pos[drivepin] == 80) or (pos[drivepin] == 0)) {
+    dir[drivepin] = !dir[drivepin];
   }
 }
 
-int _fstep_back() {
-  if (pos > 0) {
+int _fstep_back(int drivepin) {
+  if (pos[drivepin] > 0) {
     digitalWrite(dirpin, back);
     delayMicroseconds(500);
+    digitalWrite(drivepin, LOW);
     digitalWrite(steppin, LOW);
     delayMicroseconds(750);
     digitalWrite(steppin, HIGH);
+    digitalWrite(drivepin, HIGH);
     delayMicroseconds(750);
-    pos--;
+    pos[drivepin]--;
     return 1;
   }
   else {
     digitalWrite(dirpin, front);
     delayMicroseconds(500);
+    digitalWrite(drivepin, LOW);
     digitalWrite(steppin, LOW);
     delayMicroseconds(750);
     digitalWrite(steppin, HIGH);
+    digitalWrite(drivepin, HIGH);
     delayMicroseconds(750);
-    pos++;
+    pos[drivepin]++;
     return 0;
   }
-  if ((pos == 80) or (pos == 0)) {
-    dir = !dir;
+  if ((pos[drivepin] == 80) or (pos[drivepin] == 0)) {
+    dir[drivepin] = !dir[drivepin];
   }
 }
 
-void _fplay_hz(int freq, int duration) {
+void _fplay_hz(int drivepin, int freq, int duration) {
   float sleeptime;
   int cycles;
   sleeptime = ((1.0 / freq) * 1000);
@@ -290,7 +347,7 @@ void _fplay_hz(int freq, int duration) {
   sleeptime = sleeptime * 1000;
   if ((duration > 0) and (freq >= 30) and (freq <= 500) and (cycles > 0)) {
     for (int c = 1; c <= cycles; c++) {
-      _fstep_once();
+      _fstep_once(drivepin);
       delayMicroseconds(sleeptime);
     }
   }
@@ -299,7 +356,7 @@ void _fplay_hz(int freq, int duration) {
   }
 }
 
-void _fplay_note(int note, int duration) {
+void _fplay_note(int drivepin, int note, int duration) {
   int resfreq;
   resfreq = 29;
   switch (note) {
@@ -365,8 +422,9 @@ void _fplay_note(int note, int duration) {
     case 59: resfreq = 494; break;
     case 60: resfreq = 523; break;
   }
-  _fplay_hz(resfreq, duration);
+  _fplay_hz(drivepin, resfreq, duration);
 }
+
 
 // Library Functions ends here.
 // Program starts just here.
@@ -376,11 +434,12 @@ void _fplay_note(int note, int duration) {
 
 
 void setup() {
-  _finitialize();
+  _finitialize(piano);
+
 }
 
 void loop() {
   for (int i = 11; i <= 59; i++) {
-    _fplay_note(i, 250);
+    _fplay_note(piano, i, 250);
   }
 }
